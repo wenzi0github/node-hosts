@@ -1,68 +1,103 @@
 var request = require('request'),
     $ = require('cheerio'),
+    async = require('async'),
     fs = require('fs');
 
 var wzHosts = {
-    hostsurl : 'http://www.360kb.com/kb/2_122.html',    // 请求地址
-    hostsfile : 'C:/Windows/System32/drivers/etc/hosts',// 本地hosts地址
-    localfile : './default.txt',  // 默认hosts
+    _option : {
+        hostsurl : 'http://www.360kb.com/kb/2_122.html',    // 请求地址
+        hostsfile : 'C:/Windows/System32/drivers/etc/hosts',// 本地hosts地址
+        localfile : './default.txt' // 默认hosts
+    },  
 
-    // 初始化
-    init : function(){
-        this.start();
-        this.requrl();
+    init : function(option){
+        this._option = this.extend(this._option, option);
+        this.execute();
     },
 
-    start : function(){
-        this.log('正在请求url: '+this.hostsurl);
-    },
-
-    end : function(){
-        this.log('运行完毕!');
-    },
-
-    requrl : function(){
+    // 执行
+    execute : function(){
         var self = this;
-        request(this.hostsurl, function (error, response, body) {
-            if (!error && response.statusCode == 200) {
-                self.log('正在解析.....');
-                var text = self.filter(body);
-                self.log('正在读取默认hosts...');
-                var local = self.read(self.localfile);
-                self.log('正在写入....');
-                self.write(self.hostsfile, local+text);
-                self.log('写入完毕....');
-            }else{
-                self.log('ERROR:请求url出现错误，请检查');
+        async.waterfall([
+            function(callback){
+                self.log("正在连接 hosts url....");
+
+                request(self._option.hostsurl, function (error, response, body) {
+                    callback(error, body);
+                });
+            },
+            function(body, callback){
+                self.log("正在解析数据....");
+
+                var $body = $(body),
+                    $v_story = $body.find('.v_story'),
+                    text = $v_story.text(),
+                    qualifier = '=====',    // 限定符
+                    index = 0;
+
+                index = text.indexOf(qualifier)+qualifier.length;
+                text = "\n\r#googlehosts\n\r" + text.substr(index);
+                
+                callback(null, text);
+            },
+            function(text, callback){
+                self.log('读取本地文件....');
+
+                fs.open(self._option.localfile, 'a+');
+                fs.readFile(self._option.localfile,'utf-8', function(err, data){
+                    if(err){
+                        self.log('读取文件失败....');
+                    }
+                    self.log('读取文件完毕....');
+                    callback(err, data + text);
+                }); 
+            },
+            function(text, callback){
+                self.log('正在写入hosts....');
+                fs.writeFile(self._option.hostsfile, text, "utf8", function(err, data){
+                    if(err){
+                        self.log("写入失败....");
+                    }else{
+                        self.log("写入成功....");
+                    }
+                    callback(err);
+                });
+            },
+            function(){
+                self.log('运行完毕!');
             }
-            self.end();
-        });
+        ], function(err, data){
+            console.log('err: '+err);
+            // console.log('data: '+data);
+        })
     },
 
-    // 解析页面中的内容
-    filter : function(body){
-        var $body = $(body),
-            $v_story = $body.find('.v_story'),
-            text = $v_story.text(),
-            qualifier = '=====',    // 限定符
-            index = 0;
-
-        index = text.indexOf(qualifier)+qualifier.length;
-        return "\n\r#googlehosts\n\r" + text.substr(index);
-    },
-
-    /*
-     * 写文件
-     * @param   filename    文件路径
-     * @param   string      写入内容
-     */
-    write : function(filename, string){
-        return fs.writeFileSync(filename, string, "utf8");
-    },
-
-    // 读文件
-    read : function(filename){
-        return fs.readFileSync(filename,'utf-8'); 
+    extend : function(source, dest){
+        var _extend = function me(dest, source) {
+            for (var name in dest) {
+                if (dest.hasOwnProperty(name)) {
+                    //当前属性是否为对象,如果为对象，则进行递归
+                    if ((dest[name] instanceof Object) && (source[name] instanceof Object)) {
+                        me(dest[name], source[name]);
+                    }
+                    //检测该属性是否存在
+                    if (source.hasOwnProperty(name)) {
+                        continue;
+                    } else {
+                        source[name] = dest[name];
+                    }
+                }
+            }
+        }
+        var _result = {},
+            arr = arguments;
+        //遍历属性，至后向前
+        if (!arr.length) return {};
+        for (var i = arr.length - 1; i >= 0; i--) {
+            _extend(arr[i], _result);
+        }
+        arr[0] = _result;
+        return _result;
     },
 
     // 显示进度信息
