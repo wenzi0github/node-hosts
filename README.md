@@ -12,6 +12,8 @@ node index.js
 
 当然，这里还有一个问题要注意，hosts文件需要有可读写的权限，不然hosts是无法进行修改的。  
 
+程序采用的更新hosts的方式是全覆盖写入，因此我们需要把自己配置的一些hosts写到一个文件里（如default.txt）。当程序更新时，会首先读取`default.txt`里的hosts配置，然后与远程地址里的google hosts一起写入到本地的hosts文件中。  
+
 代码里还有参数的默认配置：  
 ```javascript
 _option : {
