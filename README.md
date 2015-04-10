@@ -6,6 +6,12 @@
 
 进入到项目目录中，运行如下命令即可：
 
+// 安装必要的集成包
+```javascript
+npm install
+```
+
+// 执行命令
 ```javascript
 node index.js
 ```
