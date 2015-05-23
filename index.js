@@ -30,7 +30,7 @@ var wzHosts = {
                 self.log("正在解析数据....");
 
                 var $body = $(body),
-                    $v_story = $body.find('.v_story'),
+                    $v_story = $body.find('.v_story pre'),
                     text = $v_story.text(),
                     qualifier = '=====',    // 限定符
                     index = 0;
